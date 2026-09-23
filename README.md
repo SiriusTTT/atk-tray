@@ -20,7 +20,7 @@ COMPX 协议，实现是重新逆向的。
 build.bat
 ```
 
-需要 MinGW g++ 或 MSVC cl.exe。产物在 `bin\atk-tray.exe`。
+需要 MinGW g++ 或 MSVC cl.exe.
 
 手动编译（MinGW）：
 
@@ -46,16 +46,16 @@ g++ -o bin/atk-tray.exe src/main.cpp -static -mwindows -municode \
 ## 协议
 
 逆向自 ATK HUB 的 COMPX 实现，并在一台 ATK Mouse 8K Dongle 上逐字节验证。
-协议层在 `src/atk_protocol.h`。
+协议层在 `src/atk_protocol.h`.
 
 ### 通道
 
 走 **col05** vendor collection（usage page `0xFF02`，usage `0x0002`），
-17 字节双向报文，**report ID `0x08`**。
+17 字节双向报文，**report ID `0x08`**.
 
-> 注意 col06（8 字节 feature）和 col07（49 字节）都不是数据通道。
-> col06 里那三个恒定的 `0x64` 是静态常量，**不是电量**。
-> col07 是固件升级通道。
+> 注意 col06（8 字节 feature）和 col07（49 字节）都不是数据通道.
+> col06 里那三个恒定的 `0x64` 是静态常量，**不是电量**.
+> col07 是固件升级通道.
 
 ### 报文格式
 
@@ -92,14 +92,14 @@ checksum = (0x55 - ((0x08 + Σ b0..b14) & 0xFF)) & 0xFF
 | `0` | 10 | 回报率块：`b5`=回报率 `b7`=档位总数 `b9`=当前档位 `b11`=bhop `b13`=按键模式 |
 | `12` / `20` / `28` / `36` | 8 | DPI 值块，每块 2 个槽位 |
 
-单字节设置项都跟一个 `0x55 - value` 的校验字节。
+单字节设置项都跟一个 `0x55 - value` 的校验字节.
 
 回报率编码：`1`=1000Hz `2`=500 `4`=250 `8`=125 `16`=2000 `32`=4000 `64`=8000
 
 ### DPI 槽位
 
-每个槽位 4 字节：`{xDpi, yDpi, dpiEx, crc}`，其中 `crc = (0x55 - (x+y+ex)) & 0xFF`。
-槽位序号 = 块内偏移 ×2 + i。
+每个槽位 4 字节：`{xDpi, yDpi, dpiEx, crc}`，其中 `crc = (0x55 - (x+y+ex)) & 0xFF`.
+槽位序号 = 块内偏移 ×2 + i.
 
 `dpiEx` 是位域，按 PAW3950Ultra 解码（也是 ATK HUB 对未知 COMPX 鼠标的回退方案）：
 
@@ -112,18 +112,18 @@ if (dpiEx & 0x01) rx *= 2;
 if (dpiEx & 0x10) ry *= 2;
 ```
 
-实测某鼠标：`400 / 800 / 1600 / 3200`，四个槽位的 CRC 全部自洽。
+实测某鼠标：`400 / 800 / 1600 / 3200`，四个槽位的 CRC 全部自洽.
 
-### 两个容易踩的坑
+### 两个注意事项
 
-1. **`GetEEPROM` 的 `b4`（数据长度）传 0 会被拒绝**（返回 status=1）。
+1. **`GetEEPROM` 的 `b4`（数据长度）传 0 会被拒绝**（返回 status=1）.
    它是「要读几个字节」，不是「有没有数据」。
-2. **鼠标休眠时，转发给鼠标的命令一律无响应**（battery / EEPROM / CID-MID），
-   而接收器自己处理的命令（`0x03` 在线状态、`0x19` 接收器灯效）照常应答。
-   所以「无响应」= 鼠标睡了，**不是协议错误**。程序据此区分两种状态。
+2. **鼠标休眠时，转发给鼠标的命令一律无响应**（battery / EEPROM / CID-MID）.
+   而接收器自己处理的命令（`0x03` 在线状态、`0x19` 接收器灯效）照常应答.
+   所以「无响应」= 鼠标睡了，**不是协议错误**。程序据此区分两种状态.
 
 另外：ATK HUB 的后台服务 `atk-hub-service.exe` 会占用同一 collection，
-`CreateFile` 可能瞬时失败，需要重试。
+`CreateFile` 可能瞬时失败，需要重试.
 
 ## 调试工具
 
