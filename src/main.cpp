@@ -32,6 +32,7 @@ extern "C" {
 #define WM_TRAY_ICON         (WM_USER + 101)
 #define WM_APP_DPI_UPDATE    (WM_USER + 102)
 #define WM_APP_BAT_UPDATE    (WM_USER + 103)
+#define WM_APP_RESTORE_TRAY  (WM_USER + 104)
 
 #define IDM_HEADER          2001
 #define IDM_BATTERY         2002
@@ -749,7 +750,18 @@ static void ShowContextMenu(HWND hWnd) {
 
 static LRESULT CALLBACK MainWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     if (msg == g_uTaskbarRestartMsg && g_uTaskbarRestartMsg != 0) {
+        // Explorer 重启会清空所有托盘图标，必须重新 NIM_ADD。
+        // 只发 NIM_MODIFY 会静默失败 —— 图标就再也回不来了。
+        Shell_NotifyIconW(NIM_ADD, &g_nid);
         UpdateTrayIcon(g_battery);
+        return 0;
+    }
+
+    if (msg == WM_APP_RESTORE_TRAY) {
+        // 用户又双击了一次 exe：把图标重新挂回去，并弹一下 OSD 作为反馈
+        Shell_NotifyIconW(NIM_ADD, &g_nid);
+        UpdateTrayIcon(g_battery);
+        ShowOsdNotification(g_dpiLevel, g_dpiX, g_battery);
         return 0;
     }
 
@@ -806,6 +818,10 @@ static LRESULT CALLBACK MainWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM l
 int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine, int nCmdShow) {
     HANDLE hMutex = CreateMutexW(NULL, TRUE, L"Local\\atk-traySingleInstance");
     if (GetLastError() == ERROR_ALREADY_EXISTS) {
+        // 已经有实例在跑。别静默退出 —— 那样用户双击就是"毫无反应"。
+        // 通知已有实例把托盘图标重新挂上（多半是被 Explorer 重启清掉了）。
+        HWND hPrev = FindWindowW(L"AtkTrayMessageWnd", NULL);
+        if (hPrev) PostMessageW(hPrev, WM_APP_RESTORE_TRAY, 0, 0);
         CloseHandle(hMutex);
         return 0;
     }
